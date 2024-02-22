@@ -207,20 +207,24 @@ CMD ["bash", "/tmp/entrypoint_new.sh" ]
 ###########################################
 FROM overlay AS deploy
 
+RUN mkdir -p /$ORG_NAME/share/$BOT_NAME
+
+ENV VIRTUAL_ENV=/opt/venv
+
 RUN useradd -m service
-
-RUN chmod -R o-rwx /
-
-RUN chmod -R o+r $VIRTUAL_ENV
-
-RUN chmod -R o+rx /$ORG_NAME/share/$BOT_NAME
 
 RUN chown -R service:service /$ORG_NAME
 
+RUN chmod -R u+r $VIRTUAL_ENV
+
+RUN chmod -R u+x /$ORG_NAME/share/$BOT_NAME
+
+
+
 
 COPY --chmod=0666 --chown=service:service <<"robot_service.sh" /.
-ros2 launch something
-su service
+echo "ros2-launch-something"
+echo "su-service"
 robot_service.sh
 
 ENTRYPOINT [ "robot_service.sh" ]
