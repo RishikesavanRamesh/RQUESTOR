@@ -33,11 +33,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      
       # Build the specific stage of the multi-stage Dockerfile
       - uses: actions/checkout@v3
+
+      # Build the DEV stage
+      - name: Build DEV stage
+        run: docker build --target dev -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:dev .
+
+      # Push the built DEV stage image
+      - name: Push DEV stage image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:dev
+
+      # Build the DEPLOY stage
       - name: Build DEPLOY stage
         run: docker build --target deploy -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:deploy .
         
-      # Push the built image to Docker Hub
+      # Push the built DEPLOY stage image
       - name: Push DEPLOY stage image
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:deploy
