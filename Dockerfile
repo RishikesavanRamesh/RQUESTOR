@@ -213,7 +213,7 @@ ENV VIRTUAL_ENV=/opt/venv
 
 RUN useradd -m service
 
-RUN chown -R service:service /$ORG_NAME
+RUN chown -R service:service /$ORG_NAME $VIRTUAL_ENV
 
 RUN chmod -R u+r $VIRTUAL_ENV
 
