@@ -209,6 +209,8 @@ FROM overlay AS deploy
 
 RUN mkdir -p /$ORG_NAME/share/$BOT_NAME
 
+RUN mkdir -p /opt/venv
+
 ENV VIRTUAL_ENV=/opt/venv
 
 RUN useradd -m service
