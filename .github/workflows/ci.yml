@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Development Image CI
 
 on:
   #push:
@@ -44,11 +44,3 @@ jobs:
       # Push the built DEV stage image
       - name: Push DEV stage image
         run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:dev
-
-      # Build the DEPLOY stage
-      - name: Build DEPLOY stage
-        run: docker build --target deploy -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:deploy .
-        
-      # Push the built DEPLOY stage image
-      - name: Push DEPLOY stage image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPONAME }}:deploy
