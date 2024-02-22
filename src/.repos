@@ -1,0 +1,10 @@
+# # List of repositories to use within your workspace
+# # See https://github.com/dirk-thomas/vcstool
+# ############ 
+# # Example:
+# ############
+# repositories:
+#   turtlesim_examples:
+#     type: git
+#     url: https://github.com/hasauino/turtlesim_examples.git
+#     version: master
