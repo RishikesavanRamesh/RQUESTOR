@@ -78,12 +78,10 @@ FROM base AS overlay
 
 
 
-ARG ROS_DISTRO
+ARG ROS_DISTRO=humble
+ARG BOT_NAME=questbot
+ARG ORG_NAME=robotoai
 ARG BUILD_USER=builder
-
-
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
 
 ENV ROS_DISTRO=${ROS_DISTRO}
 SHELL ["/bin/bash", "-c"]
@@ -100,40 +98,51 @@ RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
  && apt install -y python3-colcon-common-extensions 
 
 
+RUN apt-get update && apt-get install -y make g++ 
 
-# Create a non-root user
-RUN groupadd --gid $USER_GID $BUILD_USER \
-  && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $BUILD_USER \
-  # Add sudo support for the non-root user
-  && apt-get update \
-  && apt-get install -y sudo \
-  && echo $BUILD_USER ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$BUILD_USER\
-  && chmod 0440 /etc/sudoers.d/$BUILD_USER \
-  && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /$ORG_NAME
 
-RUN chown -R $BUILD_USER:$BUILD_USER /$ORG_NAME
+RUN mkdir -p /$ORG_NAME/share/$BOT_NAME
+
+RUN mkdir -p /opt/venv
+
+ENV VIRTUAL_ENV=/opt/venv
+
+RUN useradd -m $BUILD_USER
+
+RUN chown -R $BUILD_USER:$BUILD_USER  /$ORG_NAME $VIRTUAL_ENV
+
+RUN chmod -R u+r $VIRTUAL_ENV
+
+RUN chmod -R u+rwx /$ORG_NAME/share/$BOT_NAME
+
+RUN echo $BUILD_USER ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$BUILD_USER\
+  && chmod 0440 /etc/sudoers.d/$BUILD_USER 
+
 
 USER $BUILD_USER
 
-RUN sudo rosdep init && rosdep update 
+RUN sudo rosdep init 
+RUN rosdep update 
+
+RUN mkdir -p /home/${BUILD_USER}/workspace/src
 
 WORKDIR /home/${BUILD_USER}/workspace/src
 
 COPY ./src/.repos .
 
-# RUN vcs import < .repos 
+RUN vcs import < .repos 
+
 
 WORKDIR /home/${BUILD_USER}/workspace/
 
-RUN rosdep install --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} -y 
+RUN rosdep install --from-paths src  -y 
 
-RUN source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --install-base /${ORG_NAME}/share/$BOT_NAME/.
+# RUN source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --install-base /${ORG_NAME}/share/$BOT_NAME/.
 
-USER root
+# USER root
 
-RUN deluser --remove-home ${BUILD_USER} 
+# RUN deluser --remove-home ${BUILD_USER} 
 
 
 ###########################################
