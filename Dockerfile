@@ -266,7 +266,7 @@ ENV ORG_NAME=$ORG_NAME
 
 RUN echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> /$ORG_NAME/startup/start.sh && \
     echo 'source /${ORG_NAME}/share/${BOT_NAME}/setup.bash' >> /$ORG_NAME/startup/start.sh && \
-    echo  'ros2 launch something something' >> /$ORG_NAME/startup/start.sh && \
+    echo  'ros2 launch dyno_teleop_ros2 joystick.launch.py' >> /$ORG_NAME/startup/start.sh && \
     chmod +x /$ORG_NAME/startup/start.sh
 
 

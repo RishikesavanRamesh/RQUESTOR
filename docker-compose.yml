@@ -26,6 +26,7 @@ services:
       # Mount the source code
       - ./:/workspace:rw
       - ${SSH_KEY_PATH:-/nonexistent}:/run/secrets/
+      - /dev:/dev
       
     hostname: localhost
     
