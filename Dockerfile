@@ -83,19 +83,46 @@ ARG BOT_NAME=questbot
 ARG ORG_NAME=robotoai
 ARG BUILD_USER=builder
 
+
+ENV VIRTUAL_ENV=/opt/venv
+
+
+
 ENV ROS_DISTRO=${ROS_DISTRO}
 SHELL ["/bin/bash", "-c"]
+
+
+
+
+# Update and install necessary packages
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install virtualenv
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install virtualenv
+
+# # Create a virtual environment 
+RUN virtualenv $VIRTUAL_ENV
+
+ENV PATH=$PATH:${VIRTUAL_ENV}/bin
+
+
  
 # Use Cyclone DDS as middleware
 RUN apt-get update && apt-get install -y --no-install-recommends \
  ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
 ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
+
+
 # Install colcon and rosdep
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
  && apt-get update -y \
  && apt-get install -y python3-rosdep \
  && apt install -y python3-colcon-common-extensions 
+
 
 
 RUN apt-get update && apt-get install -y make g++ 
@@ -106,15 +133,14 @@ RUN mkdir -p /$ORG_NAME/share/$BOT_NAME
 
 RUN mkdir -p /opt/venv
 
-ENV VIRTUAL_ENV=/opt/venv
 
 RUN useradd -m $BUILD_USER
 
 RUN chown -R $BUILD_USER:$BUILD_USER  /$ORG_NAME $VIRTUAL_ENV
 
-RUN chmod -R u+r $VIRTUAL_ENV
+RUN chmod -R o+rw $VIRTUAL_ENV
 
-RUN chmod -R u+rwx /$ORG_NAME/share/$BOT_NAME
+RUN chmod -R o+rwx /$ORG_NAME/share/$BOT_NAME
 
 RUN echo $BUILD_USER ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$BUILD_USER\
   && chmod 0440 /etc/sudoers.d/$BUILD_USER 
@@ -136,13 +162,15 @@ RUN vcs import < .repos
 
 WORKDIR /home/${BUILD_USER}/workspace/
 
-RUN rosdep install --from-paths src  -y 
+RUN rosdep install --from-paths src --ignore-src -y 
 
-# RUN source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --install-base /${ORG_NAME}/share/$BOT_NAME/.
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash && colcon build --install-base /${ORG_NAME}/share/$BOT_NAME/.
 
-# USER root
+WORKDIR /
 
-# RUN deluser --remove-home ${BUILD_USER} 
+USER root
+
+RUN deluser --remove-home ${BUILD_USER} 
 
 
 ###########################################
@@ -153,6 +181,8 @@ FROM overlay AS dev
 
 
 ARG ROS_DISTRO
+
+ENV ROS_DISTRO=$ROS_DISTRO
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -168,6 +198,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ros-dev-tools \
   ros-${ROS_DISTRO}-ament-* \
   vim \
+  git-core \
+  bash-completion \
+  nano \
   && rm -rf /var/lib/apt/lists/*
 
 
@@ -181,27 +214,25 @@ SHELL [ "bash", "-c"]
 RUN echo '#!/bin/bash' > /tmp/entrypoint.sh && \
     echo '' >> /tmp/entrypoint.sh && \
     echo '# Create the user and workspace directory' >> /tmp/entrypoint.sh && \
-    echo 'groupadd --gid $USER_UID $DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
-    echo 'useradd -s /bin/bash --uid $USER_UID --gid $USER_UID -m $DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
-    echo 'echo "$DEVELOPMENT_USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
-    echo 'chmod 0440 /etc/sudoers.d/$DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
-    echo 'mkdir -p /home/$DEVELOPMENT_USERNAME/workspace' >> /tmp/entrypoint.sh && \
-    echo 'chown -R $DEVELOPMENT_USERNAME:$DEVELOPMENT_USERNAME /home/$DEVELOPMENT_USERNAME/workspace' >> /tmp/entrypoint.sh && \
-    echo 'su ${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh
+    echo 'groupadd --gid $USER_UID ${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh && \
+    echo 'useradd -s /bin/bash --uid $USER_UID --gid $USER_UID -m ${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh && \
+    echo 'echo "${DEVELOPMENT_USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh && \
+    echo 'chmod 0440 /etc/sudoers.d/${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh && \
+    echo 'mkdir -p /home/${DEVELOPMENT_USERNAME}/workspace' >> /tmp/entrypoint.sh && \
+    echo 'chown -R ${DEVELOPMENT_USERNAME}:${DEVELOPMENT_USERNAME} /home/${DEVELOPMENT_USERNAME} ${VIRTUAL_ENV}' >> /tmp/entrypoint.sh && \
+    echo 'chmod -R o+rwx /home/${DEVELOPMENT_USERNAME} ${VIRTUAL_ENV} ' >> /tmp/entrypoint.sh && \
+    # echo 'echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/${DEVELOPMENT_USERNAME}/.bashrc' >> /tmp/entrypoint.sh \
+    # echo 'echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/${DEVELOPMENT_USERNAME}/.bashrc' >> /tmp/entrypoint.sh \
+    echo 'su ${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh 
 
 ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
 
 
-# # Set up autocompletion for the user
-# apt-get update
-# apt-get install -y git-core bash-completion
-# echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$DEVELOPMENT_USERNAME/.bashrc
-# echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$DEVELOPMENT_USERNAME/.bashrc
 
 RUN chmod +x /tmp/entrypoint.sh
 
 
-CMD ["bash", "/tmp/entrypoint.sh" ]
+ENTRYPOINT ["bash", "/tmp/entrypoint.sh" ]
 
 
 
@@ -210,6 +241,10 @@ CMD ["bash", "/tmp/entrypoint.sh" ]
 #  Deployment image
 ###########################################
 FROM overlay AS deploy
+
+ENV ROS_DISTRO=humble
+ENV BOT_NAME=$BOT_NAME
+
 
 RUN mkdir -p /$ORG_NAME/share/$BOT_NAME
 
@@ -221,19 +256,28 @@ RUN useradd -m service
 
 RUN chown -R service:service /$ORG_NAME $VIRTUAL_ENV
 
-RUN chmod -R u+r $VIRTUAL_ENV
+RUN chmod -R o+r $VIRTUAL_ENV
 
-RUN chmod -R u+x /$ORG_NAME/share/$BOT_NAME
+RUN chmod -R o+x /$ORG_NAME/share/$BOT_NAME
+
+RUN mkdir /$ORG_NAME/startup
+
+ENV ORG_NAME=$ORG_NAME
+
+RUN echo 'source /opt/ros/${ROS_DISTRO}/setup.bash' >> /$ORG_NAME/startup/start.sh && \
+    echo 'source /${ORG_NAME}/share/${BOT_NAME}/setup.bash' >> /$ORG_NAME/startup/start.sh && \
+    echo  'ros2 launch something something' >> /$ORG_NAME/startup/start.sh && \
+    chmod +x /$ORG_NAME/startup/start.sh
 
 
 
+WORKDIR /$ORG_NAME/startup
 
-COPY --chmod=0666 --chown=service:service <<"robot_service.sh" /.
-echo "ros2-launch-something"
-echo "su-service"
-robot_service.sh
+RUN chmod u+x start.sh
 
-ENTRYPOINT [ "robot_service.sh" ]
+USER service
+
+ENTRYPOINT [ "bash", "start.sh" ]
 
 
 #  yeah moved ## older:should have move the colcon build in the install base to the github action so that it will be build there ...
