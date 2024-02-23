@@ -9,7 +9,7 @@ FROM ubuntu:22.04 AS base
 
 
 ARG ROS_DISTRO=humble
-ARG ORG_NAME=robotoai
+ARG ORG_NAME=roboto-ai
 
 
 
@@ -144,9 +144,6 @@ FROM overlay AS dev
 
 
 ARG ROS_DISTRO
-ARG DEVELOPMENT_USERNAME
-
-ENV DEVELOPMENT_USERNAME=${DEVELOPMENT_USERNAME}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -169,24 +166,22 @@ ENV DEBIAN_FRONTEND=
 ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
 
 
+SHELL [ "bash", "-c"]
 
-COPY  <<"entrypoint_new.sh" /tmp/.
 
-DEVELOPMENT_USERNAME=TESTUSER
-USER_GID=1000
-USER_UID=1000
-# Check if the user already exists
-if ! id -u $DEVELOPMENT_USERNAME > /dev/null 2>&1; then
-    # Create the user and workspace directory
-    groupadd --gid $USER_GID $DEVELOPMENT_USERNAME
-    useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $DEVELOPMENT_USERNAME
-    echo "$DEVELOPMENT_USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$DEVELOPMENT_USERNAME
-    chmod 0440 /etc/sudoers.d/$DEVELOPMENT_USERNAME
-    mkdir -p /home/$DEVELOPMENT_USERNAME/workspace
-    chown -R $DEVELOPMENT_USERNAME:$DEVELOPMENT_USERNAME /home/$DEVELOPMENT_USERNAME/workspace
-fi
-su ${DEVELOPMENT_USERNAME}
-entrypoint_new.sh
+RUN echo '#!/bin/bash' > /tmp/entrypoint.sh && \
+    echo '' >> /tmp/entrypoint.sh && \
+    echo '# Create the user and workspace directory' >> /tmp/entrypoint.sh && \
+    echo 'groupadd --gid $USER_UID $DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
+    echo 'useradd -s /bin/bash --uid $USER_UID --gid $USER_UID -m $DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
+    echo 'echo "$DEVELOPMENT_USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
+    echo 'chmod 0440 /etc/sudoers.d/$DEVELOPMENT_USERNAME' >> /tmp/entrypoint.sh && \
+    echo 'mkdir -p /home/$DEVELOPMENT_USERNAME/workspace' >> /tmp/entrypoint.sh && \
+    echo 'chown -R $DEVELOPMENT_USERNAME:$DEVELOPMENT_USERNAME /home/$DEVELOPMENT_USERNAME/workspace' >> /tmp/entrypoint.sh && \
+    echo 'su ${DEVELOPMENT_USERNAME}' >> /tmp/entrypoint.sh
+
+ENV AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1
+
 
 # # Set up autocompletion for the user
 # apt-get update
@@ -194,10 +189,10 @@ entrypoint_new.sh
 # echo "if [ -f /opt/ros/${ROS_DISTRO}/setup.bash ]; then source /opt/ros/${ROS_DISTRO}/setup.bash; fi" >> /home/$DEVELOPMENT_USERNAME/.bashrc
 # echo "if [ -f /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash ]; then source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash; fi" >> /home/$DEVELOPMENT_USERNAME/.bashrc
 
-RUN chmod +x /tmp/entrypoint_new.sh
+RUN chmod +x /tmp/entrypoint.sh
 
 
-CMD ["bash", "/tmp/entrypoint_new.sh" ]
+CMD ["bash", "/tmp/entrypoint.sh" ]
 
 
 

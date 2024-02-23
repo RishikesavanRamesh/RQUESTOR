@@ -1,63 +1,36 @@
 version: "3.9"
 services:
-  # Base image containing dependencies.
-  base:
-    image: ${BOT_NAME}:base
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        ROS_DISTRO: humble
-      target: base
-    # Interactive shell
-    stdin_open: true
-    tty: true
+  dev:
+    image: questbot:dev
+ 
     # Networking and IPC for ROS 2
     network_mode: host
     ipc: host
     # Needed to display graphical applications
     privileged: true
+
     environment:
       # Allows graphical programs in the container.
-      - DISPLAY=${DISPLAY}
-      - QT_X11_NO_MITSHM=1
-      - NVIDIA_DRIVER_CAPABILITIES=all
+      DISPLAY: ${DISPLAY}
+      QT_X11_NO_MITSHM: 1
+      NVIDIA_DRIVER_CAPABILITIES: all
+
+      SSH_KEY_PATH: /run/secrets/ssh_key
+      DEVELOPMENT_USERNAME: $USER  
+      USER_UID: $UID
     volumes:
       # Allows graphical programs in the container.
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${XAUTHORITY:-$HOME/.Xauthority}:/root/.Xauthority
 
-  # Overlay image containing the source code.
-  overlay:
-    extends: base
-    image: ${BOT_NAME}:overlay
-    build:
-      context: .  
-      dockerfile: Dockerfile
-      args:
-        ROS_DISTRO: humble
-      target: overlay
-    hostname: localhost
-
-  dev:
-    extends: overlay
-    image: ${BOT_NAME}:dev
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: dev
-      args:
-      
-    volumes:
       # Mount the source code
       - ./:/workspace:rw
-      - ${SSH_KEY_PATH:-/nonexistent}:/run/secrets/ssh_key
+      - ${SSH_KEY_PATH:-/nonexistent}:/run/secrets/
+      
+    hostname: localhost
+    
     command: sleep infinity
-    environment: 
-      SSH_KEY_PATH: /run/secrets/ssh_key
-      DEVELOPMENT_USERNAME: $USER
-      USER_GID: $UID
-      USER_UID: $GID
+
     secrets:
       - ssh_key
   
